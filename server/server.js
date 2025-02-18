@@ -66,22 +66,36 @@ function verifyToken(req, res, next) {
 }
 
 // Admin Authentication Routes
-app.post('/api/register', async (req, res) => {
-    const { username, password } = req.body;
-    if (!username || !password) return res.status(400).json({ message: 'Username and password are required' });
+app.put('/api/:collection/:id', verifyToken, upload.single('photo'), async (req, res) => {
+    const { collection, id } = req.params;
+
+    // Check if the collection exists in the models object
+    if (!models[collection]) {
+        return res.status(400).json({ message: 'Invalid collection name' });
+    }
 
     try {
-        const existingAdmin = await Admin.findOne({ username });
-        if (existingAdmin) return res.status(400).json({ message: 'Username already exists' });
+        const updateData = { ...req.body };
 
-        const hashedPassword = await bcrypt.hash(password, 10);
-        const newAdmin = new Admin({ username, password: hashedPassword });
-        await newAdmin.save();
-        res.status(201).json({ message: 'Admin registered successfully' });
+        // If a new file is uploaded, update the photo URL
+        if (req.file) {
+            updateData.photo = `/uploads/${req.file.filename}`;
+        }
+
+        // Find and update the document
+        const updatedItem = await models[collection].findByIdAndUpdate(id, updateData, { new: true });
+
+        if (!updatedItem) {
+            return res.status(404).json({ message: `${collection.slice(0, -1)} not found` });
+        }
+
+        res.json({ message: `${collection.slice(0, -1)} updated successfully`, updatedItem });
     } catch (error) {
-        res.status(500).json({ message: 'Error registering admin', error });
+        console.error('Update error:', error);
+        res.status(500).json({ message: `Error updating ${collection.slice(0, -1)}`, error });
     }
 });
+
 
 app.post('/api/login', async (req, res) => {
     const { username, password } = req.body;
