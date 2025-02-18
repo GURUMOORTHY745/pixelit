@@ -165,7 +165,7 @@ app.post('/api/send-query', async (req, res) => {
     }
     const mailOptions = {
         from: process.env.EMAIL_USER,
-        to: '9922008109@klu.ac.in',
+        to: 'pixelit@klu.ac.in',
         subject: `New Query from ${name}`,
         text: `Name: ${name}\nEmail: ${email}\n\nMessage:\n${message}`
     };
