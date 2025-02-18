@@ -1,0 +1,44 @@
+/* General Styles */
+body {
+    font-family: 'Arial', sans-serif;
+    background-color: #f9f9f9;
+    margin: 0;
+    padding: 0;
+    color: #333;
+}
+
+/* Header Styles */
+header {
+    background: #333;
+    color: white;
+    padding: 10px 20px;
+}
+
+/* Card Styles */
+#members-list, #events-list, #games-list {
+    display: flex;
+    overflow-x: auto;
+    padding: 10px 0;
+}
+
+.card {
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+    margin-right: 10px;
+    padding: 10px;
+    min-width: 200px;
+    transition: transform 0.2s;
+}
+
+.card:hover {
+    transform: scale(1.05);
+}
+
+/* Footer Styles */
+footer {
+    background: #333;
+    color: white;
+    padding: 10px 20px;
+    text-align: center;
+}

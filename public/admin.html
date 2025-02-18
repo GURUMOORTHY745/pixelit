@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Dashboard</title>
+    <link rel="stylesheet" href="/styles/admin.css">
+    <style>
+        /* Basic Table Styling */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+            background-color: #f9f9f9;
+        }
+
+        table th, table td {
+            padding: 12px 15px;
+            border: 1px solid #ddd;
+            text-align: left;
+        }
+
+        table th {
+            background-color: #4CAF50;
+            color: white;
+            font-weight: bold;
+        }
+
+        table tr:nth-child(even) {
+            background-color: #f2f2f2;
+        }
+
+        table tr:hover {
+            background-color: #ddd;
+        }
+
+        /* Styling the form sections */
+        section {
+            margin-bottom: 40px;
+        }
+
+        section h2 {
+            margin-bottom: 20px;
+            color: #333;
+        }
+
+        input[type="text"], input[type="date"], input[type="email"], input[type="tel"], textarea {
+            width: 100%;
+            padding: 10px;
+            margin: 5px 0 20px 0;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+
+        button[type="submit"] {
+            background-color: #4CAF50;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+
+        button[type="submit"]:hover {
+            background-color: #45a049;
+        }
+
+        /* Responsive Design */
+        @media screen and (max-width: 768px) {
+            table, th, td {
+                font-size: 14px;
+                padding: 10px;
+            }
+
+            input[type="text"], input[type="date"], input[type="email"], input[type="tel"], textarea {
+                width: 100%;
+            }
+
+            button[type="submit"] {
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>Admin Dashboard</h1>
+        <button id="logout-btn">Logout</button>
+    </header>
+
+    <main>
+        <!-- Manage Members -->
+        <section id="admin-members">
+            <h2>Manage Members</h2>
+            <form id="add-members-form" enctype="multipart/form-data">
+                <input type="text" name="name" placeholder="Member Name" required />
+                <input type="text" name="registrationNumber" placeholder="Registration Number" required />
+                <input type="text" name="role" placeholder="Role" required />
+                <input type="file" name="photo" accept="image/*" required />
+                <button type="submit">Add Member</button>
+            </form>
+            <table id="members-table">
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>Name</th>
+                        <th>Registration Number</th>
+                        <th>Role</th>
+                        <th>Problem</th>
+                        <th>Photo</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <!-- Dynamic Data Rows -->
+                </tbody>
+            </table>
+        </section>
+
+        <!-- Manage Upcoming Events -->
+        <section id="admin-upcoming-events">
+            <h2>Manage Upcoming Events</h2>
+            <form id="add-events-form" enctype="multipart/form-data">
+                <input type="text" name="title" placeholder="Event Title" required />
+                <input type="date" name="date" required />
+                <input type="text" name="location" placeholder="Location" required />
+                <input type="text" name="link" placeholder="Link" />
+                <input type="file" name="photo" accept="image/*" required />
+                <button type="submit">Add Event</button>
+            </form>
+            <table id="upcomingEvents-table">
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>Title</th>
+                        <th>Date</th>
+                        <th>Location</th>
+                        <th>Problem</th>
+                        <th>Photo</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <!-- Dynamic Data Rows -->
+                </tbody>
+            </table>
+        </section>
+
+        <!-- Manage Club Games -->
+        <section id="admin-club-games">
+            <h2>Manage Club Games</h2>
+            <form id="add-games-form" enctype="multipart/form-data">
+                <input type="text" name="title" placeholder="Game Title" required />
+                <input type="text" name="genre" placeholder="Genre" required />
+                <input type="text" name="author" placeholder="Author" required />
+                <input type="text" name="link" placeholder="Link" />
+                <input type="file" name="photo" accept="image/*" />
+               
+                <button type="submit">Add Game</button>
+            </form>
+            <table id="clubGames-table">
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>Title</th>
+                        <th>Genre</th>
+                        <th>Author</th>
+                        <th>Problem</th>
+                        <th>Photo</th>
+                        
+                        <th>Link</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <!-- Dynamic Data Rows -->
+                </tbody>
+            </table>
+        </section>
+
+        <!-- Manage Coordinators -->
+        <section id="admin-coordinators">
+            <h2>Manage Coordinators</h2>
+            <form id="add-coordinators-form" enctype="multipart/form-data">
+                <input type="text" name="name" placeholder="Coordinator Name" required />
+                <input type="text" name="department" placeholder="Department" required />
+                <input type="tel" name="phone" placeholder="Phone Number" required />
+                <input type="email" name="email" placeholder="Email" required />
+                <input type="file" name="photo" accept="image/*" required />
+                <button type="submit">Add Coordinator</button>
+            </form>
+            <table id="coordinators-table">
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>Name</th>
+                        <th>Department</th>
+                        <th>Phone</th>
+                        <th>Email</th>
+                        <th>Problem</th>
+                        <th>Photo</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <!-- Dynamic Data Rows -->
+                </tbody>
+            </table>
+        </section>
+
+        <!-- Manage Contacts -->
+        <section id="admin-contacts">
+            <h2>Manage Contacts</h2>
+            <form id="add-contacts-form">
+                <input type="text" name="name" placeholder="Contact Name" required />
+                <input type="email" name="email" placeholder="Email" required />
+                <input type="tel" name="phone" placeholder="Phone Number" required />
+                <button type="submit">Add Contact</button>
+            </form>            
+            <table id="contacts-table">
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>Name</th>
+                        <th>Email</th>
+                        <th>Phone</th>
+                        <th>Problem</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <!-- Dynamic Data Rows -->
+                </tbody>
+            </table>
+        </section>
+    </main>
+
+    <script src="/scripts/admin.js"></script>
+</body>
+</html>
