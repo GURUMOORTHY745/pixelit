@@ -115,6 +115,33 @@ Object.entries(models).forEach(([route, Model]) => {
             res.status(500).json({ message: `Error fetching ${route}`, error });
         }
     });
+    // Generic Update Route for All Collections
+app.put('/api/:collection/:id', verifyToken, upload.fields([{ name: 'photo' }, { name: 'media' }]), async (req, res) => {
+    const { collection, id } = req.params;
+
+    if (!models[collection]) {
+        return res.status(400).json({ message: 'Invalid collection name' });
+    }
+
+    try {
+        let updateData = { ...req.body };
+
+        // Handle file uploads
+        if (req.files['photo']) updateData.photo = `/uploads/${req.files['photo'][0].filename}`;
+        if (req.files['media']) updateData.media = `/uploads/${req.files['media'][0].filename}`;
+
+        const updatedItem = await models[collection].findByIdAndUpdate(id, updateData, { new: true });
+
+        if (!updatedItem) {
+            return res.status(404).json({ message: `${collection.slice(0, -1)} not found` });
+        }
+
+        res.json(updatedItem);
+    } catch (error) {
+        res.status(500).json({ message: `Error updating ${collection.slice(0, -1)}`, error });
+    }
+});
+
 // Generic Delete Route for All Collections
 app.delete('/api/:collection/:id', verifyToken, async (req, res) => {
     const { collection, id } = req.params;
