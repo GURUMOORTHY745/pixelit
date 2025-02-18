@@ -41,8 +41,6 @@ function updateTable(tableId, items, endpoint) {
 
         const photoCell = photo ? `<td><img src="${photo}" width="50" height="50"></td>` : '';
         const mediaCell = media ? `<td><video width="80" height="80" controls><source src="${media}" type="video/mp4"></video></td>` : '';
-
-        // Show link only for club games
         const linkCell = (endpoint === 'clubGames' && link) ? `<td><a href="${link}" target="_blank">Play Now</a></td>` : '';
 
         return `
@@ -53,11 +51,41 @@ function updateTable(tableId, items, endpoint) {
                 ${mediaCell}
                 ${linkCell}
                 <td>
+                    <button onclick="editItem('${endpoint}', '${_id}', '${JSON.stringify(fields).replace(/"/g, "&quot;")}')">Edit</button>
                     <button onclick="deleteItem('${endpoint}', '${_id}')">Delete</button>
                 </td>
             </tr>`;
     }).join('');
 }
+async function editItem(endpoint, id, itemData) {
+    const data = JSON.parse(itemData.replace(/&quot;/g, '"'));
+
+    // Show a prompt to edit each field (or use a modal for better UX)
+    for (let key in data) {
+        const newValue = prompt(`Edit ${key}:`, data[key]);
+        if (newValue !== null) data[key] = newValue; // Update value if not canceled
+    }
+
+    try {
+        const response = await fetch(`${API_URL}/${endpoint}/${id}`, {
+            method: 'PUT',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(data)
+        });
+
+        if (!response.ok) {
+            throw new Error('Failed to update item');
+        }
+
+        fetchAndUpdateTable(endpoint, `${endpoint}-table`); // Refresh table
+    } catch (error) {
+        console.error(`Error updating item in ${endpoint}:`, error);
+    }
+}
+
 // Delete an item
 async function deleteItem(endpoint, id) {
     if (!confirm('Are you sure you want to delete this item?')) return;
