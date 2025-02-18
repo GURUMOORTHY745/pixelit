@@ -6,38 +6,6 @@ if (!token) {
     window.location.href = 'index.html';
 }
 // Fetch and update a specific table
-async function fetchAndUpdateTable(endpoint, tableId) {
-    try {
-        if (!token) {
-            console.error("Authorization token is missing.");
-            return;
-        }
-
-        const response = await fetch(`${API_URL}/${endpoint}`, {
-            headers: { Authorization: `Bearer ${token}` },
-        });
-
-        if (!response.ok) {
-            throw new Error(`Failed to fetch data for ${endpoint}: ${response.statusText}`);
-        }
-
-        const items = await response.json();
-
-        if (!Array.isArray(items)) {
-            throw new Error("Invalid data format received.");
-        }
-
-        updateTable(tableId, items, endpoint);
-    } catch (error) {
-        console.error(`Error fetching data from ${endpoint}:`, error);
-        const tableBody = document.querySelector(`#${tableId} tbody`);
-        if (tableBody) {
-            tableBody.innerHTML = `<tr><td colspan="100%">Error loading data</td></tr>`;
-        }
-    }
-}
-
-// Update a table with fetched data
 function updateTable(tableId, items, endpoint) {
     const tableElement = document.getElementById(tableId);
     if (!tableElement) {
@@ -45,8 +13,8 @@ function updateTable(tableId, items, endpoint) {
         return;
     }
 
-    const tableBody = tableElement.querySelector('tbody');
-    tableBody.innerHTML = ""; // Clear existing rows
+    const tableBody = tableElement.querySelector("tbody");
+    tableBody.innerHTML = ""; // Clear previous rows
 
     if (items.length === 0) {
         tableBody.innerHTML = `<tr><td colspan="100%">No data available</td></tr>`;
@@ -107,17 +75,27 @@ function updateTable(tableId, items, endpoint) {
             row.appendChild(linkCell);
         }
 
+        // Actions Cell
+        const actionsCell = document.createElement("td");
+
+        // Edit Button
+        const editButton = document.createElement("button");
+        editButton.textContent = "Edit";
+        editButton.style.marginRight = "5px";
+        editButton.onclick = () => editItem(endpoint, _id, item); // Call edit function
+        actionsCell.appendChild(editButton);
+
         // Delete Button
-        const deleteCell = document.createElement("td");
         const deleteButton = document.createElement("button");
         deleteButton.textContent = "Delete";
         deleteButton.onclick = () => deleteItem(endpoint, _id);
-        deleteCell.appendChild(deleteButton);
-        row.appendChild(deleteCell);
+        actionsCell.appendChild(deleteButton);
 
+        row.appendChild(actionsCell);
         tableBody.appendChild(row);
     });
 }
+
 
 // Delete an item
 async function deleteItem(endpoint, id) {
