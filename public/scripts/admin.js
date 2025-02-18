@@ -8,18 +8,32 @@ if (!token) {
 // Fetch and update a specific table
 async function fetchAndUpdateTable(endpoint, tableId) {
     try {
+        if (!token) {
+            console.error("Authorization token is missing.");
+            return;
+        }
+
         const response = await fetch(`${API_URL}/${endpoint}`, {
             headers: { Authorization: `Bearer ${token}` },
         });
 
         if (!response.ok) {
-            throw new Error(`Failed to fetch data for endpoint: ${endpoint}`);
+            throw new Error(`Failed to fetch data for ${endpoint}: ${response.statusText}`);
         }
 
         const items = await response.json();
+
+        if (!Array.isArray(items)) {
+            throw new Error("Invalid data format received.");
+        }
+
         updateTable(tableId, items, endpoint);
     } catch (error) {
         console.error(`Error fetching data from ${endpoint}:`, error);
+        const tableBody = document.querySelector(`#${tableId} tbody`);
+        if (tableBody) {
+            tableBody.innerHTML = `<tr><td colspan="100%">Error loading data</td></tr>`;
+        }
     }
 }
 
@@ -32,32 +46,79 @@ function updateTable(tableId, items, endpoint) {
     }
 
     const tableBody = tableElement.querySelector('tbody');
-    tableBody.innerHTML = items.map((item, index) => {
+    tableBody.innerHTML = ""; // Clear existing rows
+
+    if (items.length === 0) {
+        tableBody.innerHTML = `<tr><td colspan="100%">No data available</td></tr>`;
+        return;
+    }
+
+    items.forEach((item, index) => {
         const { _id, photo, media, link, ...fields } = item;
 
-        const fieldCells = Object.entries(fields)
-            .map(([key, value]) => `<td>${value || "-"}</td>`)
-            .join('');
+        const row = document.createElement("tr");
 
-        const photoCell = photo ? `<td><img src="${photo}" width="50" height="50"></td>` : '';
-        const mediaCell = media ? `<td><video width="80" height="80" controls><source src="${media}" type="video/mp4"></video></td>` : '';
+        // Index Column
+        const indexCell = document.createElement("td");
+        indexCell.textContent = index + 1;
+        row.appendChild(indexCell);
 
-        // Show link only for club games
-        const linkCell = (endpoint === 'clubGames' && link) ? `<td><a href="${link}" target="_blank">Play Now</a></td>` : '';
+        // Data Fields
+        Object.entries(fields).forEach(([key, value]) => {
+            const cell = document.createElement("td");
+            cell.textContent = value || "-";
+            row.appendChild(cell);
+        });
 
-        return `
-            <tr>
-                <td>${index + 1}</td>
-                ${fieldCells}
-                ${photoCell}
-                ${mediaCell}
-                ${linkCell}
-                <td>
-                    <button onclick="deleteItem('${endpoint}', '${_id}')">Delete</button>
-                </td>
-            </tr>`;
-    }).join('');
+        // Photo Cell
+        if (photo) {
+            const photoCell = document.createElement("td");
+            const img = document.createElement("img");
+            img.src = photo;
+            img.width = 50;
+            img.height = 50;
+            photoCell.appendChild(img);
+            row.appendChild(photoCell);
+        }
+
+        // Media Cell
+        if (media) {
+            const mediaCell = document.createElement("td");
+            const video = document.createElement("video");
+            video.width = 80;
+            video.height = 80;
+            video.controls = true;
+            const source = document.createElement("source");
+            source.src = media;
+            source.type = "video/mp4";
+            video.appendChild(source);
+            mediaCell.appendChild(video);
+            row.appendChild(mediaCell);
+        }
+
+        // Play Link Cell (for clubGames only)
+        if (endpoint === "clubGames" && link) {
+            const linkCell = document.createElement("td");
+            const anchor = document.createElement("a");
+            anchor.href = link;
+            anchor.textContent = "Play Now";
+            anchor.target = "_blank";
+            linkCell.appendChild(anchor);
+            row.appendChild(linkCell);
+        }
+
+        // Delete Button
+        const deleteCell = document.createElement("td");
+        const deleteButton = document.createElement("button");
+        deleteButton.textContent = "Delete";
+        deleteButton.onclick = () => deleteItem(endpoint, _id);
+        deleteCell.appendChild(deleteButton);
+        row.appendChild(deleteCell);
+
+        tableBody.appendChild(row);
+    });
 }
+
 // Delete an item
 async function deleteItem(endpoint, id) {
     if (!confirm('Are you sure you want to delete this item?')) return;
