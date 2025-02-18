@@ -60,31 +60,53 @@ function updateTable(tableId, items, endpoint) {
 async function editItem(endpoint, id, itemData) {
     const data = JSON.parse(itemData.replace(/&quot;/g, '"'));
 
-    // Show a prompt to edit each field (or use a modal for better UX)
-    for (let key in data) {
-        const newValue = prompt(`Edit ${key}:`, data[key]);
-        if (newValue !== null) data[key] = newValue; // Update value if not canceled
-    }
+    // Create a form dynamically
+    const formHtml = `
+        <form id="edit-form">
+            ${Object.entries(data).map(([key, value]) => `
+                <label>${key}:</label>
+                <input type="text" name="${key}" value="${value}" required><br>
+            `).join('')}
+            <label>Photo:</label>
+            <input type="file" name="photo"><br>
+            <button type="submit">Update</button>
+        </form>
+    `;
 
-    try {
-        const response = await fetch(`${API_URL}/${endpoint}/${id}`, {
-            method: 'PUT',
-            headers: {
-                'Authorization': `Bearer ${token}`,
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify(data)
-        });
+    const div = document.createElement("div");
+    div.innerHTML = formHtml;
+    document.body.appendChild(div);
 
-        if (!response.ok) {
-            throw new Error('Failed to update item');
+    // Handle form submission
+    document.getElementById("edit-form").addEventListener("submit", async (e) => {
+        e.preventDefault();
+
+        const formData = new FormData(e.target);
+        const fileInput = formData.get("photo");
+        
+        if (!fileInput.name) {
+            formData.delete("photo"); // If no new image is selected, remove it
         }
 
-        fetchAndUpdateTable(endpoint, `${endpoint}-table`); // Refresh table
-    } catch (error) {
-        console.error(`Error updating item in ${endpoint}:`, error);
-    }
+        try {
+            const response = await fetch(`${API_URL}/${endpoint}/${id}`, {
+                method: 'PUT',
+                headers: { Authorization: `Bearer ${token}` },
+                body: formData // Send FormData for file upload support
+            });
+
+            if (!response.ok) {
+                throw new Error('Failed to update item');
+            }
+
+            fetchAndUpdateTable(endpoint, `${endpoint}-table`); // Refresh table
+            div.remove(); // Remove form after submission
+        } catch (error) {
+            console.error(`Error updating item in ${endpoint}:`, error);
+        }
+    });
 }
+
 
 // Delete an item
 async function deleteItem(endpoint, id) {
