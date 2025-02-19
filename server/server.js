@@ -79,45 +79,37 @@ app.put('/api/:collection/:id', verifyToken, upload.single('photo'), async (req,
 
         // If a new file is uploaded, update the photo URL
         if (req.file) {
-            updateData.photo = /uploads/${req.file.filename};
+            updateData.photo = `/uploads/${req.file.filename}`;
         }
 
         // Find and update the document
         const updatedItem = await models[collection].findByIdAndUpdate(id, updateData, { new: true });
 
         if (!updatedItem) {
-            return res.status(404).json({ message: ${collection.slice(0, -1)} not found });
+            return res.status(404).json({ message: `${collection.slice(0, -1)} not found` });
         }
 
-        res.json({ message: ${collection.slice(0, -1)} updated successfully, updatedItem });
+        res.json({ message: `${collection.slice(0, -1)} updated successfully`, updatedItem });
     } catch (error) {
         console.error('Update error:', error);
-        res.status(500).json({ message: Error updating ${collection.slice(0, -1)}, error });
+        res.status(500).json({ message: `Error updating ${collection.slice(0, -1)}`, error });
     }
 });
-app.post('/api/:collection', verifyToken, async (req, res) => {
-    const { collection } = req.params;
 
-    if (!models[collection]) {
-        return res.status(400).json({ message: 'Invalid collection name' });
-    }
 
+app.post('/api/login', async (req, res) => {
+    const { username, password } = req.body;
     try {
-        const data = { ...req.body };
-
-        // Ensure the data contains a valid URL for the photo (if provided)
-        if (data.photo && !data.photo.startsWith('http')) {
-            return res.status(400).json({ message: 'Invalid photo URL' });
+        const admin = await Admin.findOne({ username });
+        if (!admin || !await bcrypt.compare(password, admin.password)) {
+            return res.status(401).json({ message: 'Invalid username or password' });
         }
-
-        const newItem = new models[collection](data);
-        await newItem.save();
-        res.status(201).json(newItem);
+        const token = jwt.sign({ id: admin._id }, SECRET_KEY, { expiresIn: '1h' });
+        res.json({ token });
     } catch (error) {
-        res.status(500).json({ message: `Error creating ${collection.slice(0, -1)}`, error });
+        res.status(500).json({ message: 'Error logging in', error });
     }
 });
-
 
 // CRUD Operations for Models
 const models = {
@@ -138,7 +130,7 @@ Object.entries(models).forEach(([route, Model]) => {
         }
     });
     // Generic Update Route for All Collections
-app.put('/api/:collection/:id', verifyToken, async (req, res) => {
+app.put('/api/:collection/:id', verifyToken, upload.fields([{ name: 'photo' }, { name: 'media' }]), async (req, res) => {
     const { collection, id } = req.params;
 
     if (!models[collection]) {
@@ -146,12 +138,11 @@ app.put('/api/:collection/:id', verifyToken, async (req, res) => {
     }
 
     try {
-        const updateData = { ...req.body };
+        let updateData = { ...req.body };
 
-        // Ensure the provided photo is a valid URL (if given)
-        if (updateData.photo && !updateData.photo.startsWith('http')) {
-            return res.status(400).json({ message: 'Invalid photo URL' });
-        }
+        // Handle file uploads
+        if (req.files['photo']) updateData.photo = `/uploads/${req.files['photo'][0].filename}`;
+        if (req.files['media']) updateData.media = `/uploads/${req.files['media'][0].filename}`;
 
         const updatedItem = await models[collection].findByIdAndUpdate(id, updateData, { new: true });
 
@@ -164,7 +155,6 @@ app.put('/api/:collection/:id', verifyToken, async (req, res) => {
         res.status(500).json({ message: `Error updating ${collection.slice(0, -1)}`, error });
     }
 });
-
 
 // Generic Delete Route for All Collections
 app.delete('/api/:collection/:id', verifyToken, async (req, res) => {
@@ -234,4 +224,4 @@ app.get('/', (req, res) => {
 });
 
 // Start the Server
-app.listen(PORT, () => console.log(`🚀 Server running on http://localhost:${PORT}`));
+app.listen(PORT, () => console.log(`🚀 Server running on http://localhost:${PORT}`)); 
