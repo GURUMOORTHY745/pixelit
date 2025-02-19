@@ -53,4 +53,4 @@ module.exports = {
     UpcomingEvent: mongoose.model('UpcomingEvent', upcomingEventSchema),
     ClubGame: mongoose.model('ClubGame', clubGameSchema),
     Contact: mongoose.model('Contact', contactSchema)
-}; this is my mongodb schema
+}; 
