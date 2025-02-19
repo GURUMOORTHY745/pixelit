@@ -92,14 +92,14 @@
     <main>
         <!-- Manage Members -->
         <section id="admin-members">
-            <h2>Manage Members</h2>
-            <form id="add-members-form" enctype="multipart/form-data">
-                <input type="text" name="name" placeholder="Member Name" required />
-                <input type="text" name="registrationNumber" placeholder="Registration Number" required />
-                <input type="text" name="role" placeholder="Role" required />
-                <input type="file" name="photo" accept="image/*" required />
-                <button type="submit">Add Member</button>
-            </form>
+            <form id="add-members-form">
+    <input type="text" name="name" placeholder="Member Name" required />
+    <input type="text" name="registrationNumber" placeholder="Registration Number" required />
+    <input type="text" name="role" placeholder="Role" required />
+    <input type="text" name="photo" placeholder="Photo URL (https://example.com/image.jpg)" required /> <!-- Updated -->
+    <button type="submit">Add Member</button>
+</form>
+
             <table id="members-table">
                 <thead>
                     <tr>
@@ -120,15 +120,15 @@
 
         <!-- Manage Upcoming Events -->
         <section id="admin-upcoming-events">
-            <h2>Manage Upcoming Events</h2>
-            <form id="add-events-form" enctype="multipart/form-data">
-                <input type="text" name="title" placeholder="Event Title" required />
-                <input type="date" name="date" required />
-                <input type="text" name="location" placeholder="Location" required />
-                <input type="text" name="link" placeholder="Link" />
-                <input type="file" name="photo" accept="image/*" required />
-                <button type="submit">Add Event</button>
-            </form>
+           <form id="add-events-form">
+    <input type="text" name="title" placeholder="Event Title" required />
+    <input type="date" name="date" required />
+    <input type="text" name="location" placeholder="Location" required />
+    <input type="text" name="link" placeholder="Link" />
+    <input type="text" name="photo" placeholder="Photo URL (https://example.com/event.jpg)" required /> <!-- Updated -->
+    <button type="submit">Add Event</button>
+</form>
+
             <table id="upcomingEvents-table">
                 <thead>
                     <tr>
@@ -149,16 +149,15 @@
 
         <!-- Manage Club Games -->
         <section id="admin-club-games">
-            <h2>Manage Club Games</h2>
-            <form id="add-games-form" enctype="multipart/form-data">
-                <input type="text" name="title" placeholder="Game Title" required />
-                <input type="text" name="genre" placeholder="Genre" required />
-                <input type="text" name="author" placeholder="Author" required />
-                <input type="text" name="link" placeholder="Link" />
-                <input type="file" name="photo" accept="image/*" />
-               
-                <button type="submit">Add Game</button>
-            </form>
+            <form id="add-games-form">
+    <input type="text" name="title" placeholder="Game Title" required />
+    <input type="text" name="genre" placeholder="Genre" required />
+    <input type="text" name="author" placeholder="Author" required />
+    <input type="text" name="link" placeholder="Game Link" />
+    <input type="text" name="photo" placeholder="Photo URL (https://example.com/game.jpg)" /> <!-- Updated -->
+    <button type="submit">Add Game</button>
+</form>
+
             <table id="clubGames-table">
                 <thead>
                     <tr>
@@ -181,15 +180,15 @@
 
         <!-- Manage Coordinators -->
         <section id="admin-coordinators">
-            <h2>Manage Coordinators</h2>
-            <form id="add-coordinators-form" enctype="multipart/form-data">
-                <input type="text" name="name" placeholder="Coordinator Name" required />
-                <input type="text" name="department" placeholder="Department" required />
-                <input type="tel" name="phone" placeholder="Phone Number" required />
-                <input type="email" name="email" placeholder="Email" required />
-                <input type="file" name="photo" accept="image/*" required />
-                <button type="submit">Add Coordinator</button>
-            </form>
+            <form id="add-coordinators-form">
+    <input type="text" name="name" placeholder="Coordinator Name" required />
+    <input type="text" name="department" placeholder="Department" required />
+    <input type="tel" name="phone" placeholder="Phone Number" required />
+    <input type="email" name="email" placeholder="Email" required />
+    <input type="text" name="photo" placeholder="Photo URL (https://example.com/coordinator.jpg)" required /> <!-- Updated -->
+    <button type="submit">Add Coordinator</button>
+</form>
+
             <table id="coordinators-table">
                 <thead>
                     <tr>
