@@ -66,10 +66,9 @@ function verifyToken(req, res, next) {
 }
 
 // Admin Authentication Routes
-app.put('/api/:collection/:id', verifyToken, upload.single('photo'), async (req, res) => {
+app.put('/api/:collection/:id', verifyToken, async (req, res) => {
     const { collection, id } = req.params;
 
-    // Check if the collection exists in the models object
     if (!models[collection]) {
         return res.status(400).json({ message: 'Invalid collection name' });
     }
@@ -77,39 +76,48 @@ app.put('/api/:collection/:id', verifyToken, upload.single('photo'), async (req,
     try {
         const updateData = { ...req.body };
 
-        // If a new file is uploaded, update the photo URL
-        if (req.file) {
-            updateData.photo = `/uploads/${req.file.filename}`;
+        // Ensure the provided photo is a valid URL (if given)
+        if (updateData.photo && !updateData.photo.startsWith('http')) {
+            return res.status(400).json({ message: 'Invalid photo URL' });
         }
 
-        // Find and update the document
         const updatedItem = await models[collection].findByIdAndUpdate(id, updateData, { new: true });
 
         if (!updatedItem) {
             return res.status(404).json({ message: `${collection.slice(0, -1)} not found` });
         }
 
-        res.json({ message: `${collection.slice(0, -1)} updated successfully`, updatedItem });
+        res.json(updatedItem);
     } catch (error) {
-        console.error('Update error:', error);
         res.status(500).json({ message: `Error updating ${collection.slice(0, -1)}`, error });
     }
 });
 
 
-app.post('/api/login', async (req, res) => {
-    const { username, password } = req.body;
+
+app.post('/api/:collection', verifyToken, async (req, res) => {
+    const { collection } = req.params;
+
+    if (!models[collection]) {
+        return res.status(400).json({ message: 'Invalid collection name' });
+    }
+
     try {
-        const admin = await Admin.findOne({ username });
-        if (!admin || !await bcrypt.compare(password, admin.password)) {
-            return res.status(401).json({ message: 'Invalid username or password' });
+        const data = { ...req.body };
+
+        // Ensure the data contains a valid URL for the photo (if provided)
+        if (data.photo && !data.photo.startsWith('http')) {
+            return res.status(400).json({ message: 'Invalid photo URL' });
         }
-        const token = jwt.sign({ id: admin._id }, SECRET_KEY, { expiresIn: '1h' });
-        res.json({ token });
+
+        const newItem = new models[collection](data);
+        await newItem.save();
+        res.status(201).json(newItem);
     } catch (error) {
-        res.status(500).json({ message: 'Error logging in', error });
+        res.status(500).json({ message: `Error creating ${collection.slice(0, -1)}`, error });
     }
 });
+
 
 // CRUD Operations for Models
 const models = {
