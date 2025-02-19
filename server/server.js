@@ -3,8 +3,12 @@ const mongoose = require('mongoose');
 const cors = require('cors');
 const bodyParser = require('body-parser');
 const jwt = require('jsonwebtoken');
+const bcrypt = require('bcryptjs');
+const multer = require('multer');
+const path = require('path');
+const fs = require('fs');
+const nodemailer = require('nodemailer'); // Added Nodemailer
 require('dotenv').config();
-const nodemailer = require('nodemailer');
 
 const { Admin, Member, Coordinator, UpcomingEvent, ClubGame, Contact } = require('./models');
 
@@ -18,12 +22,38 @@ app.use(bodyParser.json());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// ✅ Connect to MongoDB
+// Static Files Setup
+const uploadsDir = path.join(__dirname, 'uploads');
+if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir);
+app.use('/uploads', express.static(uploadsDir));
+
+const publicDir = path.join(__dirname, '..', 'public');
+if (!fs.existsSync(publicDir)) fs.mkdirSync(publicDir);
+app.use(express.static(publicDir));
+
+// File Upload Configuration
+const storage = multer.diskStorage({
+    destination: (req, file, cb) => cb(null, uploadsDir),
+    filename: (req, file, cb) => cb(null, Date.now() + path.extname(file.originalname))
+});
+
+const upload = multer({
+    storage,
+    fileFilter: (req, file, cb) => {
+        const allowedTypes = ['image/jpeg', 'image/png', 'video/mp4', 'video/webm'];
+        if (!allowedTypes.includes(file.mimetype)) {
+            return cb(new Error('Unsupported file type'), false);
+        }
+        cb(null, true);
+    }
+});
+
+// Database Connection
 mongoose.connect(MONGO_URI, { useNewUrlParser: true, useUnifiedTopology: true })
     .then(() => console.log('✅ MongoDB connected'))
     .catch(err => console.error('❌ MongoDB connection error:', err));
 
-// ✅ Authentication Middleware
+// Authentication Middleware
 function verifyToken(req, res, next) {
     const token = req.headers['authorization']?.split(" ")[1];
     if (!token) return res.status(403).json({ message: 'No token provided' });
@@ -35,12 +65,43 @@ function verifyToken(req, res, next) {
     });
 }
 
-// ✅ Admin Login Route (No Hashing)
+// Admin Authentication Routes
+app.put('/api/:collection/:id', verifyToken, upload.single('photo'), async (req, res) => {
+    const { collection, id } = req.params;
+
+    // Check if the collection exists in the models object
+    if (!models[collection]) {
+        return res.status(400).json({ message: 'Invalid collection name' });
+    }
+
+    try {
+        const updateData = { ...req.body };
+
+        // If a new file is uploaded, update the photo URL
+        if (req.file) {
+            updateData.photo = `/uploads/${req.file.filename}`;
+        }
+
+        // Find and update the document
+        const updatedItem = await models[collection].findByIdAndUpdate(id, updateData, { new: true });
+
+        if (!updatedItem) {
+            return res.status(404).json({ message: `${collection.slice(0, -1)} not found` });
+        }
+
+        res.json({ message: `${collection.slice(0, -1)} updated successfully`, updatedItem });
+    } catch (error) {
+        console.error('Update error:', error);
+        res.status(500).json({ message: `Error updating ${collection.slice(0, -1)}`, error });
+    }
+});
+
+
 app.post('/api/login', async (req, res) => {
     const { username, password } = req.body;
     try {
         const admin = await Admin.findOne({ username });
-        if (!admin || password !== admin.password) { // Removed bcrypt
+        if (!admin || !await bcrypt.compare(password, admin.password)) {
             return res.status(401).json({ message: 'Invalid username or password' });
         }
         const token = jwt.sign({ id: admin._id }, SECRET_KEY, { expiresIn: '1h' });
@@ -50,7 +111,7 @@ app.post('/api/login', async (req, res) => {
     }
 });
 
-// ✅ Models for CRUD Operations
+// CRUD Operations for Models
 const models = {
     members: Member,
     coordinators: Coordinator,
@@ -59,9 +120,7 @@ const models = {
     contacts: Contact
 };
 
-// ✅ Generic CRUD Routes (Without File Uploads)
 Object.entries(models).forEach(([route, Model]) => {
-    // 🔹 GET All Documents
     app.get(`/api/${route}`, async (req, res) => {
         try {
             const items = await Model.find();
@@ -70,46 +129,68 @@ Object.entries(models).forEach(([route, Model]) => {
             res.status(500).json({ message: `Error fetching ${route}`, error });
         }
     });
+    // Generic Update Route for All Collections
+app.put('/api/:collection/:id', verifyToken, upload.fields([{ name: 'photo' }, { name: 'media' }]), async (req, res) => {
+    const { collection, id } = req.params;
 
-    // 🔹 POST (Create New Document)
-    app.post(`/api/${route}`, verifyToken, async (req, res) => {
+    if (!models[collection]) {
+        return res.status(400).json({ message: 'Invalid collection name' });
+    }
+
+    try {
+        let updateData = { ...req.body };
+
+        // Handle file uploads
+        if (req.files['photo']) updateData.photo = `/uploads/${req.files['photo'][0].filename}`;
+        if (req.files['media']) updateData.media = `/uploads/${req.files['media'][0].filename}`;
+
+        const updatedItem = await models[collection].findByIdAndUpdate(id, updateData, { new: true });
+
+        if (!updatedItem) {
+            return res.status(404).json({ message: `${collection.slice(0, -1)} not found` });
+        }
+
+        res.json(updatedItem);
+    } catch (error) {
+        res.status(500).json({ message: `Error updating ${collection.slice(0, -1)}`, error });
+    }
+});
+
+// Generic Delete Route for All Collections
+app.delete('/api/:collection/:id', verifyToken, async (req, res) => {
+    const { collection, id } = req.params;
+
+    // Validate collection name
+    if (!models[collection]) {
+        return res.status(400).json({ message: 'Invalid collection name' });
+    }
+
+    try {
+        const deletedItem = await models[collection].findByIdAndDelete(id);
+        if (!deletedItem) {
+            return res.status(404).json({ message: `${collection.slice(0, -1)} not found` });
+        }
+        res.json({ message: `${collection.slice(0, -1)} deleted successfully` });
+    } catch (error) {
+        res.status(500).json({ message: `Error deleting ${collection.slice(0, -1)}`, error });
+    }
+});
+
+    app.post(`/api/${route}`, verifyToken, upload.fields([{ name: 'photo' }, { name: 'media' }]), async (req, res) => {
         try {
-            const newItem = new Model(req.body);
+            const data = { ...req.body };
+            if (req.files['photo']) data.photo = `/uploads/${req.files['photo'][0].filename}`;
+            if (req.files['media']) data.media = `/uploads/${req.files['media'][0].filename}`;
+            const newItem = new Model(data);
             await newItem.save();
             res.status(201).json(newItem);
         } catch (error) {
             res.status(500).json({ message: `Error creating ${route.slice(0, -1)}`, error });
         }
     });
-
-    // 🔹 PUT (Update Existing Document)
-    app.put(`/api/${route}/:id`, verifyToken, async (req, res) => {
-        try {
-            const updatedItem = await Model.findByIdAndUpdate(req.params.id, req.body, { new: true });
-            if (!updatedItem) {
-                return res.status(404).json({ message: `${route.slice(0, -1)} not found` });
-            }
-            res.json(updatedItem);
-        } catch (error) {
-            res.status(500).json({ message: `Error updating ${route.slice(0, -1)}`, error });
-        }
-    });
-
-    // 🔹 DELETE (Remove Document)
-    app.delete(`/api/${route}/:id`, verifyToken, async (req, res) => {
-        try {
-            const deletedItem = await Model.findByIdAndDelete(req.params.id);
-            if (!deletedItem) {
-                return res.status(404).json({ message: `${route.slice(0, -1)} not found` });
-            }
-            res.json({ message: `${route.slice(0, -1)} deleted successfully` });
-        } catch (error) {
-            res.status(500).json({ message: `Error deleting ${route.slice(0, -1)}`, error });
-        }
-    });
 });
 
-// ✅ Nodemailer Setup (For Queries)
+// Nodemailer Setup
 const transporter = nodemailer.createTransport({
     service: 'gmail',
     auth: {
@@ -118,7 +199,6 @@ const transporter = nodemailer.createTransport({
     }
 });
 
-// ✅ Contact Form (Send Query)
 app.post('/api/send-query', async (req, res) => {
     const { name, email, message } = req.body;
     if (!name || !email || !message) {
@@ -138,10 +218,10 @@ app.post('/api/send-query', async (req, res) => {
     }
 });
 
-// ✅ Serve `index.html`
+// Serve Index.html
 app.get('/', (req, res) => {
-    res.sendFile(path.join(__dirname, 'public', 'index.html'));
+    res.sendFile(path.join(publicDir, 'index.html'));
 });
 
-// ✅ Start the Server
-app.listen(PORT, () => console.log(`🚀 Server running on http://localhost:${PORT}`));
+// Start the Server
+app.listen(PORT, () => console.log(`🚀 Server running on http://localhost:${PORT}`)); 
