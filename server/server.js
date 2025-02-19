@@ -97,30 +97,38 @@ app.put('/api/:collection/:id', verifyToken, upload.single('photo'), async (req,
 });
 
 
-app.post(`/api/:collection`, verifyToken, upload.fields([{ name: 'media' }]), async (req, res) => {
-    const { collection } = req.params;
-
-    if (!models[collection]) {
-        return res.status(400).json({ message: 'Invalid collection name' });
-    }
-
+app.post('/api/login', async (req, res) => {
+    const { username, password } = req.body;
     try {
-        const data = { ...req.body };
-
-        // Handle media file upload (photo is now a URL, so no file handling)
-        if (req.files && req.files['media']) {
-            data.media = `/uploads/${req.files['media'][0].filename}`;
+        const admin = await Admin.findOne({ username });
+        if (!admin || !await bcrypt.compare(password, admin.password)) {
+            return res.status(401).json({ message: 'Invalid username or password' });
         }
-
-        const newItem = new models[collection](data);
-        await newItem.save();
-        res.status(201).json(newItem);
+        const token = jwt.sign({ id: admin._id }, SECRET_KEY, { expiresIn: '1h' });
+        res.json({ token });
     } catch (error) {
-        console.error('Create error:', error);
-        res.status(500).json({ message: `Error creating ${collection.slice(0, -1)}`, error });
+        res.status(500).json({ message: 'Error logging in', error });
     }
 });
 
+// CRUD Operations for Models
+const models = {
+    members: Member,
+    coordinators: Coordinator,
+    upcomingEvents: UpcomingEvent,
+    clubGames: ClubGame,
+    contacts: Contact
+};
+
+Object.entries(models).forEach(([route, Model]) => {
+    app.get(`/api/${route}`, async (req, res) => {
+        try {
+            const items = await Model.find();
+            res.json(items);
+        } catch (error) {
+            res.status(500).json({ message: `Error fetching ${route}`, error });
+        }
+    });
     // Generic Update Route for All Collections
 app.put('/api/:collection/:id', verifyToken, upload.fields([{ name: 'photo' }, { name: 'media' }]), async (req, res) => {
     const { collection, id } = req.params;
@@ -168,34 +176,19 @@ app.delete('/api/:collection/:id', verifyToken, async (req, res) => {
     }
 });
 
-    app.put('/api/:collection/:id', verifyToken, upload.fields([{ name: 'media' }]), async (req, res) => {
-    const { collection, id } = req.params;
-
-    if (!models[collection]) {
-        return res.status(400).json({ message: 'Invalid collection name' });
-    }
-
-    try {
-        let updateData = { ...req.body };
-
-        // Handle media file upload (photo is now a URL, so no file handling)
-        if (req.files && req.files['media']) {
-            updateData.media = `/uploads/${req.files['media'][0].filename}`;
+    app.post(`/api/${route}`, verifyToken, upload.fields([{ name: 'photo' }, { name: 'media' }]), async (req, res) => {
+        try {
+            const data = { ...req.body };
+            if (req.files['photo']) data.photo = `/uploads/${req.files['photo'][0].filename}`;
+            if (req.files['media']) data.media = `/uploads/${req.files['media'][0].filename}`;
+            const newItem = new Model(data);
+            await newItem.save();
+            res.status(201).json(newItem);
+        } catch (error) {
+            res.status(500).json({ message: `Error creating ${route.slice(0, -1)}`, error });
         }
-
-        const updatedItem = await models[collection].findByIdAndUpdate(id, updateData, { new: true });
-
-        if (!updatedItem) {
-            return res.status(404).json({ message: `${collection.slice(0, -1)} not found` });
-        }
-
-        res.json({ message: `${collection.slice(0, -1)} updated successfully`, updatedItem });
-    } catch (error) {
-        console.error('Update error:', error);
-        res.status(500).json({ message: `Error updating ${collection.slice(0, -1)}`, error });
-    }
+    });
 });
-
 
 // Nodemailer Setup
 const transporter = nodemailer.createTransport({
