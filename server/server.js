@@ -98,17 +98,20 @@ Object.entries(models).forEach(([route, Model]) => {
 
     // Create New Document with Cloudinary Upload
     app.post(`/api/${route}`, verifyToken, upload.fields([{ name: 'photo' }, { name: 'media' }]), async (req, res) => {
-        try {
-            const data = { ...req.body };
-            if (req.files['photo']) data.photo = req.files['photo'][0].path;
-            if (req.files['media']) data.media = req.files['media'][0].path;
-            const newItem = new Model(data);
-            await newItem.save();
-            res.status(201).json(newItem);
-        } catch (error) {
-            res.status(500).json({ message: `Error creating ${route.slice(0, -1)}`, error });
-        }
-    });
+    try {
+        const data = { ...req.body };
+        if (req.files['photo']) data.photo = req.files['photo'][0].path;
+        if (req.files['media']) data.media = req.files['media'][0].path;
+
+        const newItem = new Model(data);
+        await newItem.save();
+        res.status(201).json(newItem);
+    } catch (error) {
+        console.error(`❌ Error creating ${route.slice(0, -1)}:`, error);  // Log full error
+        res.status(500).json({ message: `Error creating ${route.slice(0, -1)}`, error: error.message || error });
+    }
+});
+
 
     // Update Document with Cloudinary Upload
     app.put(`/api/${route}/:id`, verifyToken, upload.fields([{ name: 'photo' }, { name: 'media' }]), async (req, res) => {
