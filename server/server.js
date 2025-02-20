@@ -5,13 +5,10 @@ const bodyParser = require('body-parser');
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
 const multer = require('multer');
-const nodemailer = require('nodemailer');
-const dotenv = require('dotenv');
-const cloudinary = require('cloudinary').v2;
-const { CloudinaryStorage } = require('multer-storage-cloudinary');
 const path = require('path');
-
-dotenv.config();
+const nodemailer = require('nodemailer');
+const fs = require('fs'); // Import fs module
+require('dotenv').config();
 
 const { Admin, Member, Coordinator, UpcomingEvent, ClubGame, Contact } = require('./models');
 
@@ -20,29 +17,36 @@ const PORT = process.env.PORT || 5001;
 const SECRET_KEY = process.env.SECRET_KEY;
 const MONGO_URI = process.env.MONGO_URI;
 
-// Middleware
 app.use(cors());
 app.use(bodyParser.json());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Cloudinary Configuration
-cloudinary.config({
-    cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
-    api_key: process.env.CLOUDINARY_API_KEY,
-    api_secret: process.env.CLOUDINARY_API_SECRET
+// Static Files Setup
+const uploadsDir = path.join(__dirname, 'uploads');
+if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir);
+app.use('/uploads', express.static(uploadsDir));
+
+const publicDir = path.join(__dirname, '..', 'public');
+if (!fs.existsSync(publicDir)) fs.mkdirSync(publicDir);
+app.use(express.static(publicDir));
+
+// File Upload Configuration
+const storage = multer.diskStorage({
+    destination: (req, file, cb) => cb(null, uploadsDir),
+    filename: (req, file, cb) => cb(null, Date.now() + path.extname(file.originalname))
 });
 
-// Cloudinary Storage Configuration
-const storage = new CloudinaryStorage({
-    cloudinary,
-    params: {
-        folder: 'PIXELIT',
-        allowedFormats: ['jpg', 'png', 'jpeg', 'mp4', 'webm']
+const upload = multer({
+    storage,
+    fileFilter: (req, file, cb) => {
+        const allowedTypes = ['image/jpeg', 'image/png', 'video/mp4', 'video/webm'];
+        if (!allowedTypes.includes(file.mimetype)) {
+            return cb(new Error('Unsupported file type'), false);
+        }
+        cb(null, true);
     }
 });
-
-const upload = multer({ storage });
 
 // Database Connection
 mongoose.connect(MONGO_URI, { useNewUrlParser: true, useUnifiedTopology: true })
@@ -61,7 +65,7 @@ function verifyToken(req, res, next) {
     });
 }
 
-// Admin Login
+// Admin Authentication Routes
 app.post('/api/login', async (req, res) => {
     const { username, password } = req.body;
     try {
@@ -76,7 +80,7 @@ app.post('/api/login', async (req, res) => {
     }
 });
 
-// Models
+// CRUD Operations for Models
 const models = {
     members: Member,
     coordinators: Coordinator,
@@ -85,7 +89,6 @@ const models = {
     contacts: Contact
 };
 
-// GET All Data from Collections
 Object.entries(models).forEach(([route, Model]) => {
     app.get(`/api/${route}`, async (req, res) => {
         try {
@@ -96,33 +99,36 @@ Object.entries(models).forEach(([route, Model]) => {
         }
     });
 
-    // Create New Document with Cloudinary Upload
+    // Generic Create Route for All Collections
     app.post(`/api/${route}`, verifyToken, upload.fields([{ name: 'photo' }, { name: 'media' }]), async (req, res) => {
-    try {
-        const data = { ...req.body };
-        if (req.files['photo']) data.photo = req.files['photo'][0].path;
-        if (req.files['media']) data.media = req.files['media'][0].path;
+        try {
+            const data = { ...req.body };
+            if (req.files['photo']) data.photo = `/uploads/${req.files['photo'][0].filename}`;
+            if (req.files['media']) data.media = `/uploads/${req.files['media'][0].filename}`;
+            const newItem = new Model(data);
+            await newItem.save();
+            res.status(201).json(newItem);
+        } catch (error) {
+            res.status(500).json({ message: `Error creating ${route.slice(0, -1)}`, error });
+        }
+    });
 
-        const newItem = new Model(data);
-        await newItem.save();
-        res.status(201).json(newItem);
-    } catch (error) {
-        console.error(`❌ Error creating ${route.slice(0, -1)}:`, error);  // Log full error
-        res.status(500).json({ message: `Error creating ${route.slice(0, -1)}`, error: error.message || error });
-    }
-});
-
-
-    // Update Document with Cloudinary Upload
+    // Generic Update Route for All Collections
     app.put(`/api/${route}/:id`, verifyToken, upload.fields([{ name: 'photo' }, { name: 'media' }]), async (req, res) => {
         const { id } = req.params;
+
         try {
             let updateData = { ...req.body };
-            if (req.files['photo']) updateData.photo = req.files['photo'][0].path;
-            if (req.files['media']) updateData.media = req.files['media'][0].path;
+
+            // Handle file uploads
+            if (req.files['photo']) updateData.photo = `/uploads/${req.files['photo'][0].filename}`;
+            if (req.files['media']) updateData.media = `/uploads/${req.files['media'][0].filename}`;
 
             const updatedItem = await Model.findByIdAndUpdate(id, updateData, { new: true });
-            if (!updatedItem) return res.status(404).json({ message: `${route.slice(0, -1)} not found` });
+
+            if (!updatedItem) {
+                return res.status(404).json({ message: `${route.slice(0, -1)} not found` });
+            }
 
             res.json(updatedItem);
         } catch (error) {
@@ -130,13 +136,15 @@ Object.entries(models).forEach(([route, Model]) => {
         }
     });
 
-    // Delete Document
+    // Generic Delete Route for All Collections
     app.delete(`/api/${route}/:id`, verifyToken, async (req, res) => {
         const { id } = req.params;
+
         try {
             const deletedItem = await Model.findByIdAndDelete(id);
-            if (!deletedItem) return res.status(404).json({ message: `${route.slice(0, -1)} not found` });
-
+            if (!deletedItem) {
+                return res.status(404).json({ message: `${route.slice(0, -1)} not found` });
+            }
             res.json({ message: `${route.slice(0, -1)} deleted successfully` });
         } catch (error) {
             res.status(500).json({ message: `Error deleting ${route.slice(0, -1)}`, error });
@@ -144,7 +152,7 @@ Object.entries(models).forEach(([route, Model]) => {
     });
 });
 
-// Nodemailer Configuration
+// Nodemailer Setup
 const transporter = nodemailer.createTransport({
     service: 'gmail',
     auth: {
@@ -153,7 +161,6 @@ const transporter = nodemailer.createTransport({
     }
 });
 
-// Send Contact Query via Email
 app.post('/api/send-query', async (req, res) => {
     const { name, email, message } = req.body;
     if (!name || !email || !message) {
@@ -174,11 +181,9 @@ app.post('/api/send-query', async (req, res) => {
 });
 
 // Serve Index.html
-const publicDir = path.join(__dirname, '..', 'public');
-app.use(express.static(publicDir));
 app.get('/', (req, res) => {
     res.sendFile(path.join(publicDir, 'index.html'));
 });
 
-// Start Server
+// Start the Server
 app.listen(PORT, () => console.log(`🚀 Server running on http://localhost:${PORT}`));
